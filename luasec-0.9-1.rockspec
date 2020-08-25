@@ -47,6 +47,7 @@ build = {
             ssl = {
                defines = {
                   "WITH_LUASOCKET", "LUASOCKET_DEBUG",
+                  "PN_LSEC_DEBUG",
                },
                incdirs = {
                   "$(OPENSSL_INCDIR)", "src/", "src/luasocket",

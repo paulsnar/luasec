@@ -9,6 +9,12 @@
 
 #include <string.h>
 
+#ifdef PN_LSEC_DEBUG
+#include <errno.h>
+#include <stdio.h>
+#include <stdlib.h>
+#endif
+
 #if defined(WIN32)
 #include <windows.h>
 #endif
@@ -302,6 +308,16 @@ static int verify_cb(int preverify_ok, X509_STORE_CTX *x509_ctx)
 
 /*------------------------------ Lua Functions -------------------------------*/
 
+#ifdef PN_LSEC_DEBUG
+static FILE * keylogfile = NULL;
+
+static void pn_ssl_keylog_callback(const SSL *ssl, const char *line)
+{
+  fwrite(line, strlen(line), 1, keylogfile);
+  fwrite("\n", 1, 1, keylogfile);
+}
+#endif
+
 /**
  * Create a SSL context.
  */
@@ -341,6 +357,20 @@ static int create(lua_State *L)
   ctx->L = L;
   luaL_getmetatable(L, "SSL:Context");
   lua_setmetatable(L, -2);
+
+#ifdef PN_LSEC_DEBUG
+  if (getenv("SSLKEYLOGFILE") != NULL) {
+    if (keylogfile == NULL) {
+      keylogfile = fopen((const char *) getenv("SSLKEYLOGFILE"), "w");
+      if (keylogfile == NULL) {
+        printf("failed to open logfile: %d %s\n",
+          errno, strerror(errno));
+        abort();
+      }
+    }
+    SSL_CTX_set_keylog_callback(ctx->context, pn_ssl_keylog_callback);
+  }
+#endif
 
   /* No session support */
   SSL_CTX_set_session_cache_mode(ctx->context, SSL_SESS_CACHE_OFF);
